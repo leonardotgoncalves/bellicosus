@@ -1,13 +1,15 @@
 # Set working directory
 setwd("C:/")
 
-############### Processing pixy output #########
+############### Processing pixy output ###############
 
 # Turning off scientific notation
 # To turn it back on, change the value to zero
 options(scipen = 999)
 
-# Must configure this for each species separately
+# ATTENTION: Must configure and rerun this for each species separately
+
+#Important variables
 # Species name
 spp <- "PASC"
 # Output from pixy, filename must be spp code + "_pixy_pi_10kb.txt"
@@ -54,6 +56,7 @@ for (k in 1:length(unique(data$chromosome))){
   cat("Sizes of consecutive runs:", consecutive_runs, "\n")
   cat("Percentage of windows with homozygosis:", length(lower_than_threshold)*100/length(data$window_pos_1), "\n")
 
+  # If it was detected a ROH in the chromosome...
   if (length(consecutive_runs) > 0) {
   # Create a data frame with win_size repeated and consecutive_runs
     output_data <- data.frame(species = spp,
@@ -67,18 +70,16 @@ for (k in 1:length(unique(data$chromosome))){
 
 # Now, outside R, I have concatenated the ROH files generated into a tab-separated file (ROH_count_all.txt)
 
-############### Plotting ROH #########
+############### Plotting ROH ###############
 
 library(ggplot2)
 library(dplyr)
 
 # Read plot data
 # Must be a tab-separated file with columns named species and count
-
 plot_data <- read.delim("ROH_count_all.txt", header = T)
 
 # Plot ROH of pascuorum
-
 ROH.PASC <- filter(plot_data, species == "PASC") %>%
   ggplot(aes(x=count/1000, fill = species)) +
   scale_y_continuous(trans="sqrt", breaks = seq(0,600, by = 150)) +
@@ -89,7 +90,6 @@ ROH.PASC <- filter(plot_data, species == "PASC") %>%
   theme(legend.position = "none")
 
 # Plot ROH of terrestris
-
 ROH.TERR <- filter(plot_data, species == "TERR") %>%
   ggplot(aes(x=count/1000, fill = species)) + geom_bar() +
   scale_y_continuous(trans="sqrt", breaks = seq(0,600, by = 150)) +
@@ -100,7 +100,6 @@ ROH.TERR <- filter(plot_data, species == "TERR") %>%
   theme(legend.position = "none")
 
 # Plot ROH of bellicosus
-
 ROH.BELI4 <- filter(plot_data, species == "BELI4") %>%
   ggplot(aes(x=count/1000, fill = species)) + geom_bar() +
   scale_y_continuous(trans="sqrt", breaks = seq(0,600, by = 150)) +
@@ -111,12 +110,11 @@ ROH.BELI4 <- filter(plot_data, species == "BELI4") %>%
   theme(legend.position = "none")
 
 
-############### Heterozygosity #########
+############### Plotting heterozygosity ###############
 ## Must run all species together because I've "reutilized"
 ## some of the variables
 
 # Plot heterozygosity of terrestris (mean het. = 2.90 per kb)
-
 het <- na.omit(read.delim("TERR_pixy_pi_10kb.txt"))
 het <- subset(het, no_sites > 5000)
 
@@ -150,7 +148,6 @@ ggplot(het, aes(y=(avg_pi*1000), x = window_pos_1)) +
         panel.spacing = unit(0, "mm")) -> het.TERR
 
 # Plot heterozygosity of bellicosus (mean het. = 2.72 per kb)
-
 het <- na.omit(read.delim("BELI4_pixy_pi_10kb.txt"))
 het <- subset(het, no_sites > 5000)
 
@@ -184,7 +181,6 @@ ggplot(het, aes(y=(avg_pi*1000), x = window_pos_1)) +
         panel.spacing = unit(0, "mm")) -> het.BELI4
 
 # Plot heterozygosity of pascuorum (mean het. = 3.88 per kb)
-
 het <- na.omit(read.delim("PASC_pixy_pi_10kb.txt"))
 het <- subset(het, no_sites > 5000)
 
@@ -217,7 +213,7 @@ ggplot(het, aes(y=(avg_pi*1000), x = window_pos_1)) +
         plot.subtitle = element_text(hjust = 0.5),
         panel.spacing = unit(0, "mm")) -> het.PASC
 
-# Make a panel with the ROH and heterozygosity plots (Figure 2)
+############### Make a panel with the ROH and heterozygosity plots (Figure 2) ###############
 
 library(patchwork)
 library(svglite)
