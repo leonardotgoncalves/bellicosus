@@ -1,13 +1,20 @@
 # Set working directory
-setwd("C:/Users/treso/Área de Trabalho/BELI4/ROH/")
+setwd("C:/")
+
+############### Processing pixy output #########
 
 # Turning off scientific notation
 # To turn it back on, change the value to zero
 options(scipen = 999)
 
+# Must configure this for each species separately
+# Species name
 spp <- "PASC"
+# Output from pixy, filename must be spp code + "_pixy_pi_10kb.txt"
 data <- na.omit(read.delim(paste0(spp, "_pixy_pi_10kb.txt")))
-win_size <- 10000 # Fixed in order to analyze only 10 kb windows
+# Window size (bp)
+win_size <- 10000
+# Output filename
 filename <- paste0(spp, "_pixy_ROH_10kb.txt")
 
 # Keep only lines that analyzed more than half of the window size
@@ -16,63 +23,57 @@ data <- subset(data, no_sites > win_size*0.5)
 # Extract unique chromosome names and sort them alphabetically
 unique_strings <- sort(unique(data$chromosome))
 
-# Step 2: Create a numbered index for each unique string
+# Create a numbered index for each unique string
 numbered_strings <- setNames(seq_along(unique_strings), unique_strings)
 
-# Step 3: Replace the strings in the original dataframe with their corresponding numbers
+# Replace the strings in the original dataframe with their corresponding numbers
+# ATTENTION: This will overwrite the previous pixy file loaded
 data$chromosome <- numbered_strings[data$chromosome]
 write.table(data, file = paste0(spp, "_pixy_pi_10kb.txt"), quote = F, sep = "\t")
 
-#Calculate proportion of windows that are homozygous (considering het. < 0.0005)
-length(data$avg_pi[data$avg_pi < 0.0005])*100/length(data$window_pos_1)
-
-# write.table(subset, "RepeatMasker_TERR.bed", col.names = F, row.names = F, quote = F, sep = "\t")
-
-# BELI4 mean het: 0.002516255
-# TERR mean het: 0.002891588
-# PASC mean het: 0.00402477
+# Calculating mean heterozygosity for species loaded
+meanhet <- sum(data$count_diffs, na.rm=T)/sum(data$no_sites, na.rm=T)
+cat("Mean heterozygosity for", spp, ":", round(meanhet*1000, digits = 2), "per kb")
 
 # To run the following code, chromosome names must be a number (and only a number)
 # Iterate through each chromossome to search for runs of homozygosity
 
 for (k in 1:length(unique(data$chromosome))){
-# Create a logical vector indicating values lower than 0.0005
-lower_than_threshold <- data$avg_pi[data$chromosome == k] < 0.0005
+  # Create a logical vector indicating values lower than 0.0005
+  lower_than_threshold <- data$avg_pi[data$chromosome == k] < 0.0005
 
-# Compute lengths of consecutive runs of TRUE values
-run_lengths <- rle(lower_than_threshold)
+  # Compute lengths of consecutive runs of TRUE values
+  run_lengths <- rle(lower_than_threshold)
 
-# Filter out runs that are TRUE and get their lengths
-consecutive_runs <- run_lengths$lengths[run_lengths$values]*win_size
+  # Filter out runs that are TRUE and get their lengths
+  consecutive_runs <- run_lengths$lengths[run_lengths$values]*win_size
 
-# Output the number of consecutive runs and their sizes
-cat("Chromosome:", k, "\n")
-cat("Number of consecutive runs:", length(consecutive_runs), "\n")
-cat("Sizes of consecutive runs:", consecutive_runs, "\n")
-cat("Percentage of windows with homozygosis:", length(lower_than_threshold)*100/length(data$window_pos_1), "\n")
+  # Print the number of consecutive runs and their sizes
+  cat("Chromosome:", k, "\n")
+  cat("Number of consecutive runs:", length(consecutive_runs), "\n")
+  cat("Sizes of consecutive runs:", consecutive_runs, "\n")
+  cat("Percentage of windows with homozygosis:", length(lower_than_threshold)*100/length(data$window_pos_1), "\n")
 
-if (length(consecutive_runs) > 0) {
+  if (length(consecutive_runs) > 0) {
   # Create a data frame with win_size repeated and consecutive_runs
-  output_data <- data.frame(species = spp,
-                            chromosome = k,
-                            run_length = consecutive_runs)
+    output_data <- data.frame(species = spp,
+                              chromosome = k,
+                              run_length = consecutive_runs)
   
   # Append the data frame to the file
   write.table(output_data, file = filename, sep = "\t", row.names = FALSE, col.names = FALSE, append = TRUE, quote = FALSE)
 }
 }
 
-# Calculating mean heterozygosity for each species
+# Now, outside R, I have concatenated the ROH files generated into a tab-separated file (ROH_count_all.txt)
 
-meanhet <- sum(data$count_diffs, na.rm=T)/sum(data$no_sites, na.rm=T)
-cat("Mean heterozygosity for", spp, ":", round(meanhet*1000, digits = 2), "per kb")
-
+############### Plotting ROH #########
 
 library(ggplot2)
 library(dplyr)
 
 # Read plot data
-# Must be a tab-separated file with the columns species and count
+# Must be a tab-separated file with columns named species and count
 
 plot_data <- read.delim("ROH_count_all.txt", header = T)
 
@@ -111,8 +112,10 @@ ROH.BELI4 <- filter(plot_data, species == "BELI4") %>%
 
 
 ############### Heterozygosity #########
-## Must run since the beginning because I've "reutilized"
+## Must run all species together because I've "reutilized"
 ## some of the variables
+
+# Plot heterozygosity of terrestris (mean het. = 2.90 per kb)
 
 het <- na.omit(read.delim("TERR_pixy_pi_10kb.txt"))
 het <- subset(het, no_sites > 5000)
@@ -145,7 +148,9 @@ ggplot(het, aes(y=(avg_pi*1000), x = window_pos_1)) +
         plot.title = element_text(hjust = 0.5),
         plot.subtitle = element_text(hjust = 0.5),
         panel.spacing = unit(0, "mm")) -> het.TERR
-  
+
+# Plot heterozygosity of bellicosus (mean het. = 2.72 per kb)
+
 het <- na.omit(read.delim("BELI4_pixy_pi_10kb.txt"))
 het <- subset(het, no_sites > 5000)
 
@@ -177,6 +182,8 @@ ggplot(het, aes(y=(avg_pi*1000), x = window_pos_1)) +
         plot.title = element_text(hjust = 0.5),
         plot.subtitle = element_text(hjust = 0.5),
         panel.spacing = unit(0, "mm")) -> het.BELI4
+
+# Plot heterozygosity of pascuorum (mean het. = 3.88 per kb)
 
 het <- na.omit(read.delim("PASC_pixy_pi_10kb.txt"))
 het <- subset(het, no_sites > 5000)
@@ -210,6 +217,8 @@ ggplot(het, aes(y=(avg_pi*1000), x = window_pos_1)) +
         plot.subtitle = element_text(hjust = 0.5),
         panel.spacing = unit(0, "mm")) -> het.PASC
 
+# Make a panel with the ROH and heterozygosity plots (Figure 2)
+
 library(patchwork)
 library(svglite)
 
@@ -221,3 +230,6 @@ svglite(filename = "panel_chr_ROH.svg", width = 8.7, height = 6.5)
 plot_annotation(tag_levels = list(c("a", "d", "b", "e", "c", "f"))) + plot_layout(axis_titles = "collect")
 
 dev.off()
+
+# Must edit the output in a separate software to fix the chromosome labels
+# (couldn't fix it in R)
