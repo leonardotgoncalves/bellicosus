@@ -38,6 +38,7 @@ meanhet <- sum(data$count_diffs, na.rm=T)/sum(data$no_sites, na.rm=T)
 cat("Mean heterozygosity for", spp, ":", round(meanhet*1000, digits = 2), "per kb")
 
 # To run the following code, chromosome names must be a number (and only a number)
+# Previous section of the code must've fixed that
 # Iterate through each chromossome to search for runs of homozygosity
 
 for (k in 1:length(unique(data$chromosome))){
