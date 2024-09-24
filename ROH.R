@@ -1,3 +1,7 @@
+######################################################
+# CALCULATING RUNS OF HOMOZYGOSITY FROM PIXY OUTPUT  #
+######################################################
+
 # Set working directory
 setwd("C:/")
 
